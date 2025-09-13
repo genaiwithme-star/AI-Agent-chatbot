@@ -66,6 +66,7 @@ GEMINI_KEY = os.getenv("GEMINI_API_KEY")
 def ask_gemini(user_message, user_name):
     """
     Send message to Gemini 1.5 Flash and get the reply.
+    Logs the raw JSON for debugging.
     """
     if not GEMINI_KEY:
         return "⚠️ Gemini API key not set. Please configure GEMINI_API_KEY."
@@ -86,11 +87,18 @@ def ask_gemini(user_message, user_name):
     try:
         r = requests.post(url, json=payload, timeout=15)
         data = r.json()
+        print("Gemini raw response:", data)  # <-- Debug: raw response
+        if "candidates" not in data:
+            return f"Gemini API error: {data}"
         return data["candidates"][0]["content"]["parts"][0]["text"]
     except Exception as e:
         return f"Error contacting Gemini: {str(e)}"
 
 # === Endpoints ===
+
+@app.get("/")
+def root():
+    return {"status": "ok", "message": "Medical Lab Chatbot API is running!"}
 
 @app.get("/api/tests")
 def get_tests():
@@ -98,7 +106,6 @@ def get_tests():
 
 @app.post("/api/book")
 def book(req: BookingRequest):
-    # validate test
     test = next((t for t in TESTS if t["id"] == req.test_id), None)
     if not test:
         raise HTTPException(status_code=400, detail="Invalid test id")
@@ -107,7 +114,6 @@ def book(req: BookingRequest):
     c = conn.cursor()
     c.execute("INSERT INTO bookings (name, phone, test, date) VALUES (?, ?, ?, ?)",
               (req.name, req.phone, test["name"], req.date))
-    # increment customer bookings
     c.execute("INSERT OR IGNORE INTO customers (name, bookings) VALUES (?, 0)", (req.name,))
     c.execute("UPDATE customers SET bookings = bookings + 1 WHERE name = ?", (req.name,))
     conn.commit()
@@ -125,9 +131,6 @@ def book(req: BookingRequest):
 
 @app.post("/api/chat")
 def chat(req: ChatRequest):
-    """
-    Main chatbot endpoint — uses Gemini.
-    """
     reply = ask_gemini(req.message, req.user)
     return {"reply": reply}
 
