@@ -65,32 +65,39 @@ GEMINI_KEY = os.getenv("GEMINI_API_KEY")
 
 def ask_gemini(user_message, user_name):
     """
-    Send message to Gemini 1.5 Flash and get the reply.
-    Logs the raw JSON for debugging.
+    Send message to Gemini 1.5 Flash using the new API v1beta format.
+    Logs raw response for debugging.
     """
     if not GEMINI_KEY:
         return "⚠️ Gemini API key not set. Please configure GEMINI_API_KEY."
 
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateText?key={GEMINI_KEY}"
+
     payload = {
-        "contents": [{
-            "parts": [{
-                "text": f"You are HealthPlus Medical Lab chatbot. "
-                        f"User name: {user_name or 'Customer'}. "
-                        f"User message: {user_message}. "
-                        f"Reply in a friendly tone and help with information on lab tests, appointment bookings, and loyalty offers. "
-                        f"If user asks about test prices, use: {TESTS}"
-            }]
-        }]
+        "prompt": {
+            "messages": [
+                {
+                    "author": "user",
+                    "content": [
+                        {"type": "text", "text": f"You are HealthPlus Lab chatbot. "
+                                                   f"User: {user_name or 'Customer'}\nMessage: {user_message}\n"
+                                                   f"Reply in friendly tone, suggest tests, bookings, offers. "
+                                                   f"Use TESTS info: {TESTS}"}
+                    ]
+                }
+            ]
+        },
+        "temperature": 0.7,
+        "candidate_count": 1
     }
 
     try:
         r = requests.post(url, json=payload, timeout=15)
         data = r.json()
-        print("Gemini raw response:", data)  # <-- Debug: raw response
-        if "candidates" not in data:
+        print("Gemini raw response:", data)  # Debug
+        if "candidates" not in data or len(data["candidates"]) == 0:
             return f"Gemini API error: {data}"
-        return data["candidates"][0]["content"]["parts"][0]["text"]
+        return data["candidates"][0]["content"][0]["text"]
     except Exception as e:
         return f"Error contacting Gemini: {str(e)}"
 
