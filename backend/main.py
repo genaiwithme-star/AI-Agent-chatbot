@@ -86,7 +86,6 @@ def ask_gemini(user_message, user_name):
     try:
         r = requests.post(url, json=payload, timeout=15)
         data = r.json()
-        # ✅ Correct path to Gemini’s text reply:
         return data["candidates"][0]["content"]["parts"][0]["text"]
     except Exception as e:
         return f"Error contacting Gemini: {str(e)}"
