@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react'
 
+const API = import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
+
 export default function LabInfo(){
   const [info, setInfo] = useState(null)
 
   useEffect(()=>{
-    fetch('/api/labinfo')
+    fetch(API + '/labinfo')
       .then(r=>r.json())
       .then(d=>setInfo(d))
   },[])
